@@ -7,6 +7,8 @@ import org.keycloak.adapters.springsecurity.config.KeycloakWebSecurityConfigurer
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.DependsOn;
+import org.springframework.security.access.PermissionEvaluator;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -23,6 +25,7 @@ import mc.monacotelecom.auth.config.support.KeycloakScopePermissionEvaluator;
 
 @KeycloakConfiguration
 @ConditionalOnMissingBean(annotation=KeycloakConfiguration.class)
+@DependsOn("webMvcConfigurer")
 public class KeycloakSecurityConfiguration extends KeycloakWebSecurityConfigurerAdapter {
 
 	@Autowired
@@ -31,7 +34,7 @@ public class KeycloakSecurityConfiguration extends KeycloakWebSecurityConfigurer
 	@Autowired
 	SessionRegistry sessionRegistry;
 	
-	@Autowired(required=false)
+	@Autowired
 	CorsConfigurationSource corsConfigurationSource;
 	
 	@Override
@@ -80,7 +83,8 @@ public class KeycloakSecurityConfiguration extends KeycloakWebSecurityConfigurer
      * The keycloak permission evaluator useful for spring security ExpressionHandler configuration
      */
     @Bean
-    public KeycloakScopePermissionEvaluator permissionEvaluator() {
+    @ConditionalOnMissingBean
+    public PermissionEvaluator permissionEvaluator() {
     	return new KeycloakScopePermissionEvaluator();
     }
 }

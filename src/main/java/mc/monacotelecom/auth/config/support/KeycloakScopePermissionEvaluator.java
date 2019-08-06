@@ -16,7 +16,6 @@ import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
-
 public class KeycloakScopePermissionEvaluator implements PermissionEvaluator {
 
 	private static final Logger logger = LoggerFactory.getLogger(KeycloakScopePermissionEvaluator.class);

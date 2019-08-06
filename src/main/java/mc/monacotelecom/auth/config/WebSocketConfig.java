@@ -7,6 +7,7 @@ import javax.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpRequest;
@@ -26,6 +27,7 @@ import mc.monacotelecom.auth.config.support.KeycloakSessionContextChannelInterce
 @Configuration
 @EnableScheduling
 @EnableWebSocketMessageBroker
+@Import({ KeycloakSessionContextChannelInterceptor.class })
 public class WebSocketConfig extends AbstractSessionWebSocketMessageBrokerConfigurer<Session> {
 
 	@Autowired

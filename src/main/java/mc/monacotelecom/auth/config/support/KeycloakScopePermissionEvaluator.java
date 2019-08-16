@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import javax.servlet.http.HttpServletRequest;
 
+import org.keycloak.AuthorizationContext;
 import org.keycloak.KeycloakPrincipal;
 import org.keycloak.KeycloakSecurityContext;
 import org.keycloak.authorization.client.ClientAuthorizationContext;
@@ -38,7 +39,10 @@ public class KeycloakScopePermissionEvaluator implements PermissionEvaluator {
 	private boolean hasScope(Authentication auth, String resourceName, String scopeName) {
     	if (KeycloakPrincipal.class.isAssignableFrom(auth.getPrincipal().getClass())) {
     		KeycloakPrincipal<KeycloakSecurityContext> kcp = (KeycloakPrincipal<KeycloakSecurityContext>) auth.getPrincipal();
-        	ClientAuthorizationContext authorizationContext = (ClientAuthorizationContext) kcp.getKeycloakSecurityContext().getAuthorizationContext();
+        	AuthorizationContext authorizationContext = (ClientAuthorizationContext) kcp.getKeycloakSecurityContext().getAuthorizationContext();
+        	if (authorizationContext == null) {
+        		authorizationContext = new AuthorizationContext(kcp.getKeycloakSecurityContext().getToken(), null);
+        	}
         	return evaluate(resourceName, scopeName, authorizationContext);
     	}
     	logger.error("Cannot evaluate permission of principal " + auth.getPrincipal());
@@ -55,7 +59,7 @@ public class KeycloakScopePermissionEvaluator implements PermissionEvaluator {
         return "(unknown)";
     }
 
-	private boolean evaluate(String resourceName, String scopeName, ClientAuthorizationContext authorizationContext) {
+	private boolean evaluate(String resourceName, String scopeName, AuthorizationContext authorizationContext) {
 		boolean hasPermission;
 		if (resourceName.isEmpty()) {
 			hasPermission = authorizationContext.hasScopePermission(scopeName);

@@ -5,11 +5,14 @@ import java.io.IOException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.keycloak.OAuth2Constants;
 import org.keycloak.adapters.KeycloakConfigResolver;
 import org.keycloak.adapters.springboot.KeycloakSpringBootConfigResolver;
 import org.keycloak.adapters.springsecurity.KeycloakConfiguration;
 import org.keycloak.adapters.springsecurity.authentication.KeycloakAuthenticationEntryPoint;
 import org.keycloak.adapters.springsecurity.config.KeycloakWebSecurityConfigurerAdapter;
+import org.keycloak.adapters.springsecurity.filter.KeycloakAuthenticationProcessingFilter;
+import org.keycloak.adapters.springsecurity.filter.QueryParamPresenceRequestMatcher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -26,6 +29,10 @@ import org.springframework.security.web.authentication.www.BasicAuthenticationFi
 import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
 import org.springframework.security.web.savedrequest.RequestCache;
 import org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestHeaderRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.session.MapSessionRepository;
 import org.springframework.session.web.http.SessionRepositoryFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -42,6 +49,9 @@ public class KeycloakSecurityConfiguration extends KeycloakWebSecurityConfigurer
 
 	@Autowired
 	CorsConfigurationSource corsConfigurationSource;
+
+	@Value("${sso.login-uri:/sso/login}")
+	String loginUri;
 	
 	@Value("${sso.logout-uri:/sso/logout}")
 	String logoutUri;
@@ -65,6 +75,7 @@ public class KeycloakSecurityConfiguration extends KeycloakWebSecurityConfigurer
 	        .logout()
 	        .addLogoutHandler(keycloakLogoutHandler())
 	        .logoutUrl(logoutUri).permitAll()
+	        .logoutSuccessUrl(loginUri)
 		.and()
 			.addFilterBefore(new SessionRepositoryFilter<>(sessionRepository), ChannelProcessingFilter.class)
 			.cors().configurationSource(corsConfigurationSource)
@@ -80,6 +91,21 @@ public class KeycloakSecurityConfiguration extends KeycloakWebSecurityConfigurer
     public RequestCache requestCache() {
 		return new HttpSessionRequestCache();
 	}
+
+	@Bean
+    @Override
+    protected KeycloakAuthenticationProcessingFilter keycloakAuthenticationProcessingFilter() throws Exception {
+        RequestMatcher requestMatcher =  new OrRequestMatcher(
+                new AntPathRequestMatcher(loginUri),
+                new RequestHeaderRequestMatcher(KeycloakAuthenticationProcessingFilter.AUTHORIZATION_HEADER),
+                new QueryParamPresenceRequestMatcher(OAuth2Constants.ACCESS_TOKEN)
+        );
+        
+        KeycloakAuthenticationProcessingFilter filter = new KeycloakAuthenticationProcessingFilter(authenticationManagerBean(), requestMatcher);
+		filter.setSessionAuthenticationStrategy(sessionAuthenticationStrategy());
+	
+        return filter;
+    }
     
     @Override
     protected AuthenticationEntryPoint authenticationEntryPoint() throws Exception {
@@ -89,6 +115,7 @@ public class KeycloakSecurityConfiguration extends KeycloakWebSecurityConfigurer
         		super.commenceLoginRedirect(request, response);
         	};
         };
+        keycloakAuthenticationEntryPoint.setLoginUri(loginUri);
 		return keycloakAuthenticationEntryPoint;
     }
         

@@ -1,6 +1,7 @@
 package mc.monacotelecom.auth.config;
 
 import java.io.IOException;
+import java.util.function.Consumer;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -15,10 +16,15 @@ import org.keycloak.adapters.springsecurity.filter.KeycloakAuthenticationProcess
 import org.keycloak.adapters.springsecurity.filter.QueryParamPresenceRequestMatcher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
+import org.springframework.boot.actuate.health.HealthEndpoint;
+import org.springframework.boot.actuate.info.InfoEndpoint;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.channel.ChannelProcessingFilter;
@@ -50,43 +56,38 @@ public class KeycloakSecurityConfiguration extends KeycloakWebSecurityConfigurer
 	@Autowired
 	CorsConfigurationSource corsConfigurationSource;
 
+	@Autowired
+	KeycloakHttpSecurityCustomizer httpSecurityCustomizer;
+
+	@Autowired
+	KeycloakWebSecurityCustomizer webSecurityCustomizer;
+
 	@Value("${sso.login-uri:/sso/login}")
 	String loginUri;
 	
 	@Value("${sso.logout-uri:/sso/logout}")
 	String logoutUri;
 
-	@Override
-	protected void configure(HttpSecurity http) throws Exception {	
-		http
-			.requestCache().requestCache(requestCache())
-		.and()
-        	.csrf().requireCsrfProtectionMatcher(keycloakCsrfRequestMatcher())
-        .and()
-	        .sessionManagement()
-	        .sessionAuthenticationStrategy(sessionAuthenticationStrategy())
-        .and()
-	        .addFilterBefore(keycloakPreAuthActionsFilter(), LogoutFilter.class)
-	        .addFilterBefore(keycloakAuthenticationProcessingFilter(), BasicAuthenticationFilter.class)
-	        .addFilterAfter(keycloakSecurityContextRequestFilter(), SecurityContextHolderAwareRequestFilter.class)
-	        // This gives 403 .addFilterAfter(keycloakAuthenticatedActionsRequestFilter(), KeycloakSecurityContextRequestFilter.class)
-	        .exceptionHandling().authenticationEntryPoint(authenticationEntryPoint())
-    	.and()
-	        .logout()
-	        .addLogoutHandler(keycloakLogoutHandler())
-	        .logoutUrl(logoutUri).permitAll()
-	        .logoutSuccessUrl(loginUri)
-		.and()
-			.addFilterBefore(new SessionRepositoryFilter<>(sessionRepository), ChannelProcessingFilter.class)
-			.cors().configurationSource(corsConfigurationSource)
-		.and()
-			.headers().frameOptions().sameOrigin()
-		.and()
-			.authorizeRequests()
-			.anyRequest()
-			.authenticated();
+	private interface CheckedConsumer<T, E extends Throwable> {
+
+		void accept(T t) throws E;
+
 	}
-	
+
+	public interface KeycloakHttpSecurityCustomizer extends CheckedConsumer<HttpSecurity, Exception> { }
+
+	public interface KeycloakWebSecurityCustomizer extends CheckedConsumer<WebSecurity, Exception> { }
+
+	@Override
+	protected void configure(HttpSecurity http) throws Exception {
+		httpSecurityCustomizer.accept(http);
+	}
+
+	@Override
+	public void configure(WebSecurity web) throws Exception {
+		webSecurityCustomizer.accept(web);
+	}
+
 	@Bean
     public RequestCache requestCache() {
 		return new HttpSessionRequestCache();
@@ -111,7 +112,7 @@ public class KeycloakSecurityConfiguration extends KeycloakWebSecurityConfigurer
     protected AuthenticationEntryPoint authenticationEntryPoint() throws Exception {
         KeycloakAuthenticationEntryPoint keycloakAuthenticationEntryPoint = new KeycloakAuthenticationEntryPoint(adapterDeploymentContext()) {
         	protected void commenceLoginRedirect(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        		requestCache().saveRequest((HttpServletRequest) request, (HttpServletResponse) response);
+        		requestCache().saveRequest(request, response);
         		super.commenceLoginRedirect(request, response);
         	};
         };
@@ -145,4 +146,42 @@ public class KeycloakSecurityConfiguration extends KeycloakWebSecurityConfigurer
 		return new KeycloakSpringBootConfigResolver();
 	}
 
+	@Bean
+	@ConditionalOnMissingBean
+	public KeycloakHttpSecurityCustomizer keycloakHttpSecurityCustomizer() {
+		return http ->
+			http.requestCache().requestCache(requestCache())
+				.and()
+					.csrf().requireCsrfProtectionMatcher(keycloakCsrfRequestMatcher())
+				.and()
+					.sessionManagement()
+					.sessionAuthenticationStrategy(sessionAuthenticationStrategy())
+				.and()
+					.addFilterBefore(keycloakPreAuthActionsFilter(), LogoutFilter.class)
+					.addFilterBefore(keycloakAuthenticationProcessingFilter(), BasicAuthenticationFilter.class)
+					.addFilterAfter(keycloakSecurityContextRequestFilter(), SecurityContextHolderAwareRequestFilter.class)
+					// This gives 403 .addFilterAfter(keycloakAuthenticatedActionsRequestFilter(), KeycloakSecurityContextRequestFilter.class)
+					.exceptionHandling().authenticationEntryPoint(authenticationEntryPoint())
+				.and()
+					.logout()
+					.addLogoutHandler(keycloakLogoutHandler())
+					.logoutUrl(logoutUri).permitAll()
+					.logoutSuccessUrl(loginUri)
+				.and()
+					.addFilterBefore(new SessionRepositoryFilter<>(sessionRepository), ChannelProcessingFilter.class)
+					.cors().configurationSource(corsConfigurationSource)
+				.and()
+					.headers().frameOptions().sameOrigin()
+				.and()
+					.authorizeRequests()
+					.requestMatchers(EndpointRequest.to(InfoEndpoint.class, HealthEndpoint.class)).permitAll()
+					.requestMatchers(EndpointRequest.toAnyEndpoint()).hasRole("ACTUATOR")
+					.anyRequest().authenticated();
+	}
+
+	@Bean
+	@ConditionalOnMissingBean
+	public KeycloakWebSecurityCustomizer keycloakWebSecurityCustomizer() {
+		return web -> {};
+	}
 }

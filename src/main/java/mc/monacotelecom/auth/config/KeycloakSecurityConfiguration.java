@@ -152,8 +152,7 @@ public class KeycloakSecurityConfiguration extends KeycloakWebSecurityConfigurer
 		return http ->
 			http.requestCache().requestCache(requestCache())
 				.and()
-					.csrf().requireCsrfProtectionMatcher(keycloakCsrfRequestMatcher())
-				.and()
+					.csrf().disable()
 					.sessionManagement()
 					.sessionAuthenticationStrategy(sessionAuthenticationStrategy())
 				.and()
@@ -175,7 +174,6 @@ public class KeycloakSecurityConfiguration extends KeycloakWebSecurityConfigurer
 				.and()
 					.authorizeRequests()
 					.requestMatchers(EndpointRequest.to(InfoEndpoint.class, HealthEndpoint.class)).permitAll()
-					.requestMatchers(EndpointRequest.toAnyEndpoint()).hasRole("ACTUATOR")
 					.anyRequest().authenticated();
 	}
 

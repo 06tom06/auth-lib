@@ -49,7 +49,7 @@ There is a tool that allows to verify that authorization is setup correctly by e
 
 Lastly, the Export Settings tab allows to export the whole setup in json format.
 
-**NOTE: after exporting authorization settings, edit the produced json to remove all id and \_id fields; this will allow to import such settings on a different platform than the one the settings were done onto, appropriately creating or
+**NOTE: after exporting authorization settings, edit the produced json to remove all id and _id fields; this will allow to import such settings on a different platform than the one the settings were done onto, appropriately creating or
 updating them.**
 
 Java auth-lib for API client
@@ -95,7 +95,7 @@ The library provides a [PermissionEvaluator](https://gitlab.mt.lan/it-factory/au
 
 According to the evaluator implementation it is possible to pass an empty string ("") as [resourceName]: this has the effect of verifying the presence of a given scope regardless of the resource being accessed, and works more generally than adding unrelated scopes to a given permission (like it was done in *configuration_support* image above). It proves to be useful where an API needs to access several resources behind the scenes, despite of the initial one accessed by the client API invocation; as an example, consider that a configuration read operation also need to read models or instances (which are different resources): in this case it's possible to omit the resource name otherwise the evaluation may fail.
 
-In fact, the kind of resource being accessed is determined by the URL of the API invocation; therefore if the client is calling */dictionaries/system* the resource is identified as configuration (because this resource is matching URL patterns like */dictionaries/\**) and as soon as the configuration_read operation will need to call a method annotated with
+In fact, the kind of resource being accessed is determined by the URL of the API invocation; therefore if the client is calling */dictionaries/system* the resource is identified as configuration (because this resource is matching URL patterns like */dictionaries/**) and as soon as the configuration_read operation will need to call a method annotated with
 `@PreAuthorize("hasPermission('models', 'models_read')")` it will fail since model resource is not resolved by this call. However, annotating the same method with `@PreAuthorize("hasPermission('', 'models_read')")` would make this scenario work
 correctly
 
@@ -132,26 +132,26 @@ As illustrated above you will need to explicitely reference spring-messaging
 dependency if you want to actually send message to the websockets by mean of a
 SimpMessageSendingOperations template.
 
-You can create a CorsConfigurationSource bean inside one of your \@Configuration
+You can create a CorsConfigurationSource bean inside one of your @Configuration
 classes; it will be used for spring security configuration.
 
 **Cors configuration source**
 
-    @Bean
-    @Primary
-    public CorsConfigurationSource corsConfigurationSource() {
-        final UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        final org.springframework.web.cors.CorsConfiguration config = new org.springframework.web.cors.CorsConfiguration();
-    
-        config.setAllowCredentials(true);
-        config.setAllowedOrigins(Collections.singletonList("\*"));
-        config.setAllowedHeaders(Arrays.asList("Origin", "Content-Type", "Accept"));
-    
-        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "OPTIONS", "DELETE", "PATCH"));
-    
-        source.registerCorsConfiguration("/\*\*", config);
-        return source;
-    }
+	@Bean
+	@Primary
+	public CorsConfigurationSource corsConfigurationSource() {
+		final UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		final org.springframework.web.cors.CorsConfiguration config = new org.springframework.web.cors.CorsConfiguration();
+
+		config.setAllowCredentials(true);
+		config.setAllowedOrigins(Collections.singletonList("*"));
+		config.setAllowedHeaders(Arrays.asList("Origin", "Content-Type", "Accept"));
+
+		config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "OPTIONS", "DELETE", "PATCH"));
+
+		source.registerCorsConfiguration("/**", config);
+		return source;
+	}
 
 Finally, keycloak configuration is done inside the application.yml file. We instruct the policy enforcer not to control the actuator path (which will be accessible to anybody) and the websocket broker endpoint (it is */messages* by default but can be changed by the autoconfiguration property *messaging.broker.endpoint*). The latter is actually controlled by the channel interceptor that the library defines.
 

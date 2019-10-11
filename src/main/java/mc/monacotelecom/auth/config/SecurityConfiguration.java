@@ -40,4 +40,5 @@ public class SecurityConfiguration extends GlobalMethodSecurityConfiguration {
     	return new KeycloakScopePermissionEvaluator();
     }
 
+
 }

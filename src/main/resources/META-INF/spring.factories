@@ -1,5 +1,6 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
 mc.monacotelecom.auth.config.HttpSessionConfiguration,\
-mc.monacotelecom.auth.config.KeycloakSecurityConfiguration,\
+mc.monacotelecom.auth.config.KeycloakSecurityStatefulConfiguration,\
+mc.monacotelecom.auth.config.KeycloakSecurityStatelessConfiguration,\
 mc.monacotelecom.auth.config.WebSocketSecurityConfig,\
 mc.monacotelecom.auth.config.SecurityConfiguration

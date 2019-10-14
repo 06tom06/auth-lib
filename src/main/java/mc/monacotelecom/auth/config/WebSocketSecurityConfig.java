@@ -1,5 +1,9 @@
 package mc.monacotelecom.auth.config;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -12,6 +16,9 @@ import org.springframework.security.config.annotation.web.socket.AbstractSecurit
 import org.springframework.session.MapSession;
 import org.springframework.session.MapSessionRepository;
 import org.springframework.session.web.socket.server.SessionRepositoryMessageInterceptor;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 
@@ -20,9 +27,6 @@ import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 @EnableScheduling
 @EnableWebSocketMessageBroker
 public class WebSocketSecurityConfig extends AbstractSecurityWebSocketMessageBrokerConfigurer {
-
-	@Value("${cors.allowedOrigin:*}")
-	String allowedOrigin;
 
 	@Value("${messaging.broker.endpoint:/messages}")
 	String messagingBrokerEndpoint;
@@ -36,6 +40,9 @@ public class WebSocketSecurityConfig extends AbstractSecurityWebSocketMessageBro
 	@Autowired
 	MapSessionRepository sessionRepository;
 
+	@Autowired
+	CorsConfigurationSource corsConfigurationSource;
+	
 	@Override
 	public void configureMessageBroker(MessageBrokerRegistry config) {
 		config.enableSimpleBroker(messagingBrokerTopic);
@@ -54,8 +61,13 @@ public class WebSocketSecurityConfig extends AbstractSecurityWebSocketMessageBro
 
 	@Override
 	public void registerStompEndpoints(StompEndpointRegistry registry) {
+		List<String> corsAllowedOrigins = new ArrayList<>();
+		if (UrlBasedCorsConfigurationSource.class.isAssignableFrom(corsConfigurationSource.getClass())) {
+			Map<String, CorsConfiguration> corsConfigurations = ((UrlBasedCorsConfigurationSource) corsConfigurationSource).getCorsConfigurations();
+			corsConfigurations.forEach((path, conf) -> conf.getAllowedOrigins().stream().forEach(corsAllowedOrigins::add));
+		}
 		registry.addEndpoint(messagingBrokerEndpoint)
-			.setAllowedOrigins(allowedOrigin)
+			.setAllowedOrigins(corsAllowedOrigins.toArray(new String[0]))
 			.withSockJS()
 			.setInterceptors(sessionRepositoryMessageInterceptor());
 	}

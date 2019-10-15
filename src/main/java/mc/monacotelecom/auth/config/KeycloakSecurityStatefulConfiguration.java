@@ -18,11 +18,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.boot.actuate.health.HealthEndpoint;
 import org.springframework.boot.actuate.info.InfoEndpoint;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.builders.WebSecurity;
+import org.springframework.security.config.annotation.web.socket.AbstractSecurityWebSocketMessageBrokerConfigurer;
 import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.channel.ChannelProcessingFilter;
@@ -40,7 +43,9 @@ import org.springframework.web.cors.CorsConfigurationSource;
 
 @KeycloakConfiguration
 @ConditionalOnMissingBean(annotation=KeycloakConfiguration.class)
-public class KeycloakSecurityConfiguration extends KeycloakWebSecurityConfigurerAdapter {
+@ConditionalOnClass(AbstractSecurityWebSocketMessageBrokerConfigurer.class)
+@ConditionalOnWebApplication
+public class KeycloakSecurityStatefulConfiguration extends KeycloakWebSecurityConfigurerAdapter {
 
 	@Autowired
 	MapSessionRepository sessionRepository;
@@ -51,12 +56,6 @@ public class KeycloakSecurityConfiguration extends KeycloakWebSecurityConfigurer
 	@Autowired
 	CorsConfigurationSource corsConfigurationSource;
 
-	@Autowired
-	KeycloakHttpSecurityCustomizer httpSecurityCustomizer;
-
-	@Autowired
-	KeycloakWebSecurityCustomizer webSecurityCustomizer;
-
 	@Value("${sso.login-uri:/sso/login}")
 	String loginUri;
 	
@@ -65,27 +64,38 @@ public class KeycloakSecurityConfiguration extends KeycloakWebSecurityConfigurer
 	
 	@Value("${messaging.broker.endpoint:/messages}")
 	String messagingBrokerEndpoint;
-	
-	private interface CheckedConsumer<T, E extends Throwable> {
-
-		void accept(T t) throws E;
-
-	}
-
-	public interface KeycloakHttpSecurityCustomizer extends CheckedConsumer<HttpSecurity, Exception> { }
-
-	public interface KeycloakWebSecurityCustomizer extends CheckedConsumer<WebSecurity, Exception> { }
 
 	@Override
 	protected void configure(HttpSecurity http) throws Exception {
 		super.configure(http);
-		httpSecurityCustomizer.accept(http);
+		http.requestCache().requestCache(requestCache())
+				.and()
+				.csrf().disable()
+				.sessionManagement()
+				.sessionAuthenticationStrategy(sessionAuthenticationStrategy())
+				.and()
+				.logout()
+				.addLogoutHandler(keycloakLogoutHandler())
+				.logoutUrl(logoutUri).permitAll()
+				.logoutSuccessUrl(loginUri)
+				.and()
+				.addFilterBefore(new SessionRepositoryFilter<>(sessionRepository), ChannelProcessingFilter.class)
+				.cors().configurationSource(corsConfigurationSource)
+				.and()
+				.headers().frameOptions().sameOrigin()
+				.and()
+				.antMatcher(messagingBrokerEndpoint)
+				.anonymous()
+				.and()
+				.authorizeRequests()
+				.requestMatchers(EndpointRequest.to(InfoEndpoint.class, HealthEndpoint.class)).permitAll()
+				.anyRequest().authenticated();
 	}
 
 	@Override
 	public void configure(WebSecurity web) throws Exception {
 		super.configure(web);
-		webSecurityCustomizer.accept(web);
+		web.ignoring().antMatchers("/actuator/health", "/actuator/info", messagingBrokerEndpoint + "/**");
 	}
 
 	@Bean
@@ -144,40 +154,5 @@ public class KeycloakSecurityConfiguration extends KeycloakWebSecurityConfigurer
 	@Bean
 	public KeycloakConfigResolver keycloakConfigResolver() {
 		return new KeycloakSpringBootConfigResolver();
-	}
-
-	@Bean
-	@ConditionalOnMissingBean
-	public KeycloakHttpSecurityCustomizer keycloakHttpSecurityCustomizer() {
-		
-		return http ->
-			http.requestCache().requestCache(requestCache())
-				.and()
-					.csrf().disable()
-					.sessionManagement()
-					.sessionAuthenticationStrategy(sessionAuthenticationStrategy())
-				.and()
-					.logout()
-					.addLogoutHandler(keycloakLogoutHandler())
-					.logoutUrl(logoutUri).permitAll()
-					.logoutSuccessUrl(loginUri)
-				.and()
-					.addFilterBefore(new SessionRepositoryFilter<>(sessionRepository), ChannelProcessingFilter.class)
-					.cors().configurationSource(corsConfigurationSource)
-				.and()
-					.headers().frameOptions().sameOrigin()
-				.and()
-					.antMatcher(messagingBrokerEndpoint)
-					.anonymous()
-				.and()
-					.authorizeRequests()
-					.requestMatchers(EndpointRequest.to(InfoEndpoint.class, HealthEndpoint.class)).permitAll()
-					.anyRequest().authenticated();
-	}
-
-	@Bean
-	@ConditionalOnMissingBean
-	public KeycloakWebSecurityCustomizer keycloakWebSecurityCustomizer() {
-		return web -> web.ignoring().antMatchers(messagingBrokerEndpoint + "/**");
 	}
 }

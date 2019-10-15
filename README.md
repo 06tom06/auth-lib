@@ -99,11 +99,11 @@ In fact, the kind of resource being accessed is determined by the URL of the API
 `@PreAuthorize("hasPermission('models', 'models_read')")` it will fail since model resource is not resolved by this call. However, annotating the same method with `@PreAuthorize("hasPermission('', 'models_read')")` would make this scenario work
 correctly
 
-### Installation
+### Installation for stateful usage
 
 The library is installed as a maven dependency; also, make sure to cover all the transitive dependencies marked as provided in the library pom.xml
 
-**Maven dependencies in pom.xml**
+**Maven dependencies in pom.xml for a stateful configuration using WebSocket**
 
     <dependencies>
 		<dependency>
@@ -127,10 +127,10 @@ The library is installed as a maven dependency; also, make sure to cover all the
 			<artifactId>spring-messaging</artifactId>
 		</dependency>
     </dependencies>
-
+    
 As illustrated above you will need to explicitely reference spring-messaging
 dependency if you want to actually send message to the websockets by mean of a
-SimpMessageSendingOperations template.
+SimpMessageSendingOperations template.    
 
 You can create a CorsConfigurationSource bean inside one of your @Configuration
 classes; it will be used for spring security configuration.
@@ -185,6 +185,85 @@ Finally, keycloak configuration is done inside the application.yml file. We inst
                 - /actuator/*
             - patterns:
                 - /messages/*
+        - authRoles:
+            - administration
+            - exploitation
+            - support
+          securityCollections:
+            - patterns:
+                - /*
+    logging:
+      level:
+        org:
+          keycloak: TRACE
+          apache.catalina.realm: TRACE
+
+### Installation for stateless usage
+
+The library is installed as a maven dependency; also, make sure to cover all the transitive dependencies marked as provided in the library pom.xml
+
+**Maven dependencies in pom.xml for a stateless configuration**
+
+    <dependencies>
+		<dependency>
+			<groupId>mc.monacotelecom.auth</groupId>
+			<artifactId>auth-lib</artifactId>
+		</dependency>
+	    <dependency>
+    		<groupId>org.springframework.boot</groupId>
+    		<artifactId>spring-boot-starter-security</artifactId>
+    	</dependency>
+    </dependencies>
+    
+You can create a CorsConfigurationSource bean inside one of your @Configuration
+classes; it will be used for spring security configuration.
+
+**Cors configuration source**
+
+	@Bean
+	@Primary
+	public CorsConfigurationSource corsConfigurationSource() {
+		final UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		final org.springframework.web.cors.CorsConfiguration config = new org.springframework.web.cors.CorsConfiguration();
+
+		config.setAllowCredentials(true);
+		config.setAllowedOrigins(Collections.singletonList("*"));
+		config.setAllowedHeaders(Arrays.asList("Origin", "Content-Type", "Accept"));
+
+		config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "OPTIONS", "DELETE", "PATCH"));
+
+		source.registerCorsConfiguration("/**", config);
+		return source;
+	}
+
+Finally, keycloak configuration is done inside the application.yml file. We instruct the policy enforcer not to control the actuator path (which will be accessible to anybody).
+
+**application.yml**
+
+    spring:
+      main:
+        allow-bean-definition-overriding: true
+     
+    keycloak:
+      auth-server-url: https://iam.prod.lan/auth
+      credentials:
+        secret: ba880d10-7527-46a2-9d79-0355875815e4
+      realm: monaco-telecom-local
+      resource: unm-api
+      ssl-required: external
+      use-resource-role-mappings: true
+      principal-attribute: preferred_username
+      policy-enforcer-config:
+        enforcement-mode: ENFORCING
+        paths:
+          - path: /actuator/*
+            enforcement-mode: DISABLED
+      cors: true
+      securityConstraints:
+        - authRoles:
+          securityCollections:
+            - patterns:
+                - /actuator/*
         - authRoles:
             - administration
             - exploitation

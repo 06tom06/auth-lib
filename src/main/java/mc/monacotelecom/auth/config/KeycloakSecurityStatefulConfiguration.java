@@ -22,6 +22,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.builders.WebSecurity;
@@ -41,6 +42,7 @@ import org.springframework.session.MapSessionRepository;
 import org.springframework.session.web.http.SessionRepositoryFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
 
+@Order(99)
 @KeycloakConfiguration
 @ConditionalOnMissingBean(annotation=KeycloakConfiguration.class)
 @ConditionalOnClass(AbstractSecurityWebSocketMessageBrokerConfigurer.class)

@@ -3,18 +3,25 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-        <groupId>com.mt.buildfwk</groupId>
+        <groupId>mc.monacotelecom.buildfwk</groupId>
         <artifactId>parent</artifactId>
-        <version>2.0.3</version>
+        <version>3.0.0</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>auth-lib</artifactId>
     <groupId>mc.monacotelecom.auth</groupId>
     <packaging>jar</packaging>
     <name>Authentication and Authorization library</name>
-    <version>1.0.11</version>
+    <version>1.0.12</version>
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>mc.monacotelecom.bom</groupId>
+                <artifactId>bom-component</artifactId>
+                <version>3.0.0</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <!-- Import dependency management from Spring Boot -->
                 <groupId>org.springframework.boot</groupId>
@@ -24,16 +31,9 @@
                 <scope>import</scope>
             </dependency>
             <dependency>
-                <groupId>com.mt.bom</groupId>
-                <artifactId>bom-component</artifactId>
-                <version>2.0.0</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
 			  <groupId>org.keycloak.bom</groupId>
 			  <artifactId>keycloak-adapter-bom</artifactId>
-			  <version>6.0.1</version>
+			  <version>${keycloak.version}</version>
 			  <type>pom</type>
 			  <scope>import</scope>
 			</dependency>
@@ -60,6 +60,7 @@
         <dependency>
 		    <groupId>org.springframework.integration</groupId>
 		    <artifactId>spring-integration-security</artifactId>
+            <optional>true</optional>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -89,12 +90,12 @@
         <dependency>
         	<groupId>junit</groupId>
         	<artifactId>junit</artifactId>
-        	<scope>provided</scope>
+        	<scope>test</scope>
         </dependency>
         <dependency>
         	<groupId>org.mockito</groupId>
         	<artifactId>mockito-core</artifactId>
-        	<scope>provided</scope>
+        	<scope>test</scope>
         </dependency>
         
     </dependencies>

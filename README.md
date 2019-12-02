@@ -340,4 +340,13 @@ following example:
         .catch(error => ...)
     }
 
+Troubleshooting
+============================
 
+**Websocket can't connect**
+
+Be sure that the `CorsConfigurationSource` is loaded before auth-lib; if it is not the case you will have `Invalid CORS Request` as response to the websocket connection attempt.
+
+In order to force the bean to load first, you can add the configuration class (`CorsSecurityConfiguration`) that defines it to the application primary source
+
+    SpringApplication.run(new Class[] {MyApplication.class, CorsSecurityConfiguration.class}, args);

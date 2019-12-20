@@ -4,6 +4,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.access.PermissionEvaluator;
 import org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler;
 import org.springframework.security.access.expression.method.MethodSecurityExpressionHandler;
@@ -13,10 +14,12 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import mc.monacotelecom.auth.config.support.KeycloakScopePermissionEvaluator;
+import mc.monacotelecom.auth.config.support.KeycloakSecurityContextPropagationInterceptor;
 
 @Configuration
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 @ConditionalOnWebApplication
+@Import(KeycloakSecurityContextPropagationInterceptor.class)
 public class SecurityConfiguration extends GlobalMethodSecurityConfiguration {
 
     @Override

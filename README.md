@@ -126,6 +126,10 @@ The library is installed as a maven dependency; also, make sure to cover all the
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-messaging</artifactId>
 		</dependency>
+            <dependency>
+                <groupId>org.springframework.integration</groupId>
+                <artifactId>spring-integration-security</artifactId>
+            </dependency>
     </dependencies>
     
 As illustrated above you will need to explicitely reference spring-messaging

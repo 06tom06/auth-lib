@@ -11,6 +11,8 @@ import org.keycloak.adapters.RefreshableKeycloakSecurityContext;
 import org.keycloak.adapters.springsecurity.facade.SimpleHttpFacade;
 import org.keycloak.adapters.springsecurity.token.SpringSecurityAdapterTokenStoreFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.integration.config.GlobalChannelInterceptor;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -28,6 +30,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Component
 @GlobalChannelInterceptor
+@ConditionalOnBean(type = { "org.keycloak.adapters.AdapterDeploymentContext", "org.springframework.cloud.stream.binding.BindingService" })
+@ConditionalOnClass(name= { "org.keycloak.adapters.AdapterDeploymentContext", "org.springframework.cloud.stream.binding.BindingService", "org.springframework.messaging.support.ChannelInterceptor" })
 public class KeycloakSecurityContextPropagationInterceptor implements ChannelInterceptor {
 
 	private static final String HEADER_SECURITY_AUTHENTICATION = "x-security-authentication";

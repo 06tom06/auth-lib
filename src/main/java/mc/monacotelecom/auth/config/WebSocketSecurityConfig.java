@@ -32,6 +32,9 @@ import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 @ConditionalOnWebApplication
 public class WebSocketSecurityConfig extends AbstractSecurityWebSocketMessageBrokerConfigurer {
 
+	@Value("${messaging.sockjs.url:https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.4.0/sockjs.js}")
+	String clientLibraryUrl;
+	
 	@Value("${messaging.broker.endpoint:/messages}")
 	String messagingBrokerEndpoint;
 
@@ -73,6 +76,7 @@ public class WebSocketSecurityConfig extends AbstractSecurityWebSocketMessageBro
 		registry.addEndpoint(messagingBrokerEndpoint)
 			.setAllowedOrigins(corsAllowedOrigins.toArray(new String[0]))
 			.withSockJS()
+			.setClientLibraryUrl(clientLibraryUrl)
 			.setInterceptors(sessionRepositoryMessageInterceptor());
 	}
 	

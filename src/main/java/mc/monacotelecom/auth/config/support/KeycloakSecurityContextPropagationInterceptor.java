@@ -1,5 +1,9 @@
 package mc.monacotelecom.auth.config.support;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -10,9 +14,10 @@ import org.keycloak.adapters.KeycloakDeployment;
 import org.keycloak.adapters.RefreshableKeycloakSecurityContext;
 import org.keycloak.adapters.springsecurity.facade.SimpleHttpFacade;
 import org.keycloak.adapters.springsecurity.token.SpringSecurityAdapterTokenStoreFactory;
+import org.keycloak.representations.AccessToken.Authorization;
+import org.keycloak.representations.idm.authorization.Permission;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.integration.config.GlobalChannelInterceptor;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -29,9 +34,8 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component
-@GlobalChannelInterceptor
-@ConditionalOnBean(type = { "org.keycloak.adapters.AdapterDeploymentContext", "org.springframework.cloud.stream.binding.BindingService" })
-@ConditionalOnClass(name= { "org.keycloak.adapters.AdapterDeploymentContext", "org.springframework.cloud.stream.binding.BindingService", "org.springframework.messaging.support.ChannelInterceptor" })
+@GlobalChannelInterceptor(order=-10)
+@ConditionalOnBean(type = { "org.springframework.cloud.stream.binder.BinderTypeRegistry" })
 public class KeycloakSecurityContextPropagationInterceptor implements ChannelInterceptor {
 
 	private static final String HEADER_SECURITY_AUTHENTICATION = "x-security-authentication";
@@ -72,8 +76,9 @@ public class KeycloakSecurityContextPropagationInterceptor implements ChannelInt
 			log.debug("Cannot propagate Authentication: principal is not the expected KeycloakPrincipal type");
 			return message;
 		}
+		String simpleName = message.getPayload().getClass().getSimpleName();
 		Message<?> augmentedMessage = MessageBuilder.fromMessage(message)
-				.setHeader(HEADER_PAYLOAD_CLASS, message.getPayload().getClass().getSimpleName())
+				.setHeaderIfAbsent(HEADER_PAYLOAD_CLASS, simpleName)
 				.setHeader(HEADER_SECURITY_AUTHENTICATION, SerializationUtils.serialize(authentication))
 				.build();
 		return augmentedMessage;
@@ -105,8 +110,19 @@ public class KeycloakSecurityContextPropagationInterceptor implements ChannelInt
 		KeycloakDeployment deployment = adapterDeploymentContext.resolveDeployment(new SimpleHttpFacade(request, response));
 		AdapterTokenStore tokenStore = new SpringSecurityAdapterTokenStoreFactory().createAdapterTokenStore(deployment, request);
 		keycloakSecurityContext.setCurrentRequestInfo(deployment, tokenStore);
-		keycloakSecurityContext.refreshExpiredToken(false);
-
+		if (keycloakSecurityContext.getRefreshToken() == null) {
+			// We don't know what resource will be accessed so we add all scopes
+			keycloakSecurityContext.getToken().setAuthorization(new Authorization());
+			List<Permission> permissions = new ArrayList<>();
+			deployment.getPolicyEnforcer().getPaths().forEach((path, resource) -> {
+				Permission permission = new Permission(resource.getId(), new HashSet<>(resource.getScopes()));
+				permissions.add(permission);
+			});
+			keycloakSecurityContext.getToken().getAuthorization().setPermissions(permissions);
+		} else {
+			keycloakSecurityContext.refreshExpiredToken(false);
+		}
+		
 		if (keycloakSecurityContext.isActive()) {
 			SecurityContextHolder.setContext(new SecurityContextImpl(propagatedAuthentication));
 		} else {
